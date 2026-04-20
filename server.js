@@ -5,6 +5,7 @@ const axios = require('axios');
 const app = express();
 
 // 1. Safe but large limits for context
+app.use(cors());
 app.use(express.json({ limit: '10mb' })); 
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
