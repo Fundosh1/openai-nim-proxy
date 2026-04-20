@@ -23,7 +23,7 @@ app.post('/v1/chat/completions', async (req, res) => {
         const { model, messages, temperature, top_p, max_tokens, stream } = req.body;
 
         const cleanedBody = {
-            model: "moonshotai/kimi-k2-5", // Correct 2026 NVIDIA ID
+            model: "moonshotai/kimi-k2.5", // Correct 2026 NVIDIA ID
             messages: messages,
             temperature: temperature || 0.7,
             top_p: top_p || 1.0,
