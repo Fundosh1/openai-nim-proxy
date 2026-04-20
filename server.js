@@ -1,14 +1,20 @@
 // server.js - OpenAI to NVIDIA NIM API Proxy
 const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// INCREASE PAYLOAD: This allows huge context (up to 100MB of text)
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
+// ... keep your existing routes/proxy logic here ...
+
+// INCREASE TIMEOUT: This keeps the connection alive for long "thinking" sessions
+const PORT = process.env.PORT || 3000;
+const server = app.listen(PORT, () => console.log(`Proxy active on port ${PORT}`));
+
+server.timeout = 600000; // 10 minutes
+server.headersTimeout = 600000;
+server.keepAliveTimeout = 600000;
 
 // NVIDIA NIM API configuration
 const NIM_API_BASE = process.env.NIM_API_BASE || 'https://integrate.api.nvidia.com/v1';
