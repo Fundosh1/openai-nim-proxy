@@ -27,7 +27,7 @@ app.post('/v1/chat/completions', async (req, res) => {
             messages: messages,
             temperature: temperature || 0.7,
             top_p: top_p || 1.0,
-            max_tokens: max_tokens || 2048,
+            max_tokens: max_tokens || 8912,
             stream: stream || false
         };
 
