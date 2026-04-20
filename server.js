@@ -2,19 +2,22 @@
 const express = require('express');
 const app = express();
 
-// INCREASE PAYLOAD: This allows huge context (up to 100MB of text)
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ limit: '100mb', extended: true }));
+// 1. Safe but large limits for context
+app.use(express.json({ limit: '10mb' })); 
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// ... keep your existing routes/proxy logic here ...
+// 2. Your existing routes go here (the proxy logic)
+// app.post('/v1/chat/completions', ... )
 
-// INCREASE TIMEOUT: This keeps the connection alive for long "thinking" sessions
+// 3. The unified server start (Make sure this is the ONLY app.listen in your file!)
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => console.log(`Proxy active on port ${PORT}`));
+const server = app.listen(PORT, () => {
+    console.log(`Bridge is alive on port ${PORT}`);
+});
 
-server.timeout = 600000; // 10 minutes
-server.headersTimeout = 600000;
-server.keepAliveTimeout = 600000;
+// 4. Timeouts to keep the connection open for Kimi's deep thinking
+server.timeout = 300000; // 5 minutes
+server.headersTimeout = 305000;
 
 // NVIDIA NIM API configuration
 const NIM_API_BASE = process.env.NIM_API_BASE || 'https://integrate.api.nvidia.com/v1';
