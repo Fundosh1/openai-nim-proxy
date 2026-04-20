@@ -61,7 +61,7 @@ app.post('/v1/chat/completions', async (req, res) => {
 // 3. START SERVER (Unified - No double listen!)
 const server = app.listen(PORT, () => {
     console.log(`\n🚀 Kimi 2.5 Bridge is LIVE on port ${PORT}`);
-    console.log(`Janitor AI Proxy URL: http://your-app-url/v1/chat/completions\n`);
+    console.log(`Janitor AI Proxy URL: https://openai-nim-proxy-production-d3e5.up.railway.app/v1/chat/completions\n`);
 });
 
 // Set global server timeouts for massive lore files
