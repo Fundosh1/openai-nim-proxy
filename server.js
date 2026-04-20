@@ -25,7 +25,7 @@ app.post('/v1/chat/completions', async (req, res) => {
         const cleanedBody = {
             model: "moonshotai/kimi-k2.5", // Correct 2026 NVIDIA ID
             messages: messages,
-            temperature: temperature || 0.7,
+            temperature: temperature || 0.9,
             top_p: top_p || 1.0,
             max_tokens: max_tokens || 4096,
             stream: stream || false
