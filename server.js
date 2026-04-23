@@ -6,47 +6,52 @@ const app = express();
 // 1. SETTINGS & LIMITS
 const PORT = process.env.PORT || 8080;
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
+const MODEL_ID = "z-ai/glm-5.1"; // Verified 2026 NVIDIA ID
 
-// Strip Janitor AI's extra fields that cause NVIDIA "Invalid Request" errors
-        const { model, messages, temperature, max_tokens, stream } = req.body;
-
-
-                const cleanedBody = {
-            model: "z-ai/glm-4.7", // Correct 2026 NVIDIA ID
-            messages: messages,
-            temperature: temperature || 0.8,
-            max_tokens: max_tokens || 4096,
-            stream: stream || false
-        };
-
-// Fix "Payload Too Large" - Set to 50MB for huge context
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// Fix "Network Error" - Allow Janitor AI to communicate
+// Increase limits for GLM 5.1's 200k+ context capacity
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(cors());
 
 // 2. THE PROXY ROUTE
 app.post('/v1/chat/completions', async (req, res) => {
     try {
-        console.log(`--- New Request Received ---`);
-        
-        // Forward to NVIDIA
+        console.log(`--- GLM 5.1 Request Inbound ---`);
+
+        // Extract Janitor AI fields
+        const { messages, temperature, top_p, max_tokens, stream } = req.body;
+
+        // GLM 5.1 works best with specific reasoning toggles
+        const cleanedBody = {
+            model: MODEL_ID,
+            messages: messages,
+            temperature: temperature || 0.7,
+            top_p: top_p || 0.95, // GLM 5.1 prefers 0.95 over 1.0 for stability
+            max_tokens: max_tokens || 16384, // GLM 5.1 supports large outputs
+            stream: stream || false,
+            // 2026 GLM Features: Enable thinking/reasoning mode
+            extra_body: {
+                "chat_template_kwargs": {
+                    "enable_thinking": true,
+                    "clear_thinking": false
+                }
+            }
+        };
+
         const response = await axios({
             method: 'post',
             url: NVIDIA_URL,
             headers: {
-                // This takes the key you put in Janitor AI's API Key box
                 'Authorization': req.headers.authorization.startsWith('Bearer') 
                     ? req.headers.authorization 
                     : `Bearer ${req.headers.authorization}`,
                 'Content-Type': 'application/json'
             },
             data: cleanedBody,
-            timeout: 300000 // 5-minute timeout for Kimi's deep thinking
+            timeout: 600000 // 10-minute timeout (Reasoning models can be slow)
         });
 
-        console.log(`Success: Response received from NVIDIA`);
+        console.log(`Success: GLM 5.1 responded.`);
         res.json(response.data);
 
     } catch (error) {
@@ -58,13 +63,12 @@ app.post('/v1/chat/completions', async (req, res) => {
     }
 });
 
-// 3. START SERVER (Unified - No double listen!)
+// 3. START SERVER
 const server = app.listen(PORT, () => {
-    console.log(`\n🚀 Kimi 2.5 Bridge is LIVE on port ${PORT}`);
-    console.log(`Janitor AI Proxy URL: https://openai-nim-proxy-production-d3e5.up.railway.app/v1/chat/completions\n`);
+    console.log(`\n🚀 GLM 5.1 Bridge is LIVE on port ${PORT}`);
 });
 
-// Set global server timeouts for massive lore files
+// Vital for long reasoning tasks
 server.timeout = 600000; 
 server.headersTimeout = 605000;
 server.keepAliveTimeout = 605000;
