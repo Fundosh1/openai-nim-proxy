@@ -30,7 +30,6 @@ app.post('/v1/chat/completions', async (req, res) => {
                     : `Bearer ${req.headers.authorization}`,
                 'Content-Type': 'application/json'
             },
-            data: cleanedBody,
             timeout: 300000 // 5-minute timeout for Kimi's deep thinking
         });
 
