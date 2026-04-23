@@ -22,14 +22,6 @@ app.post('/v1/chat/completions', async (req, res) => {
         // Strip Janitor AI's extra fields that cause NVIDIA "Invalid Request" errors
         const { model, messages, temperature, max_tokens, stream } = req.body;
 
-        const cleanedBody = {
-            model: "moonshotai/kimi-k2.5", // Correct 2026 NVIDIA ID
-            messages: messages,
-            temperature: temperature || 0.9,
-            max_tokens: max_tokens || 4096,
-            stream: stream || false
-        };
-
         // Forward to NVIDIA
         const response = await axios({
             method: 'post',
