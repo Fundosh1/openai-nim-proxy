@@ -18,10 +18,7 @@ app.use(cors());
 app.post('/v1/chat/completions', async (req, res) => {
     try {
         console.log(`--- New Request Received ---`);
-
-        // Strip Janitor AI's extra fields that cause NVIDIA "Invalid Request" errors
-        const { model, messages, temperature, max_tokens, stream } = req.body;
-
+        
         // Forward to NVIDIA
         const response = await axios({
             method: 'post',
