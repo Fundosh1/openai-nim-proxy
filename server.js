@@ -7,6 +7,18 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
+// Strip Janitor AI's extra fields that cause NVIDIA "Invalid Request" errors
+        const { model, messages, temperature, max_tokens, stream } = req.body;
+
+
+                const cleanedBody = {
+            model: "z-ai/glm-4.7", // Correct 2026 NVIDIA ID
+            messages: messages,
+            temperature: temperature || 0.8,
+            max_tokens: max_tokens || 4096,
+            stream: stream || false
+        };
+
 // Fix "Payload Too Large" - Set to 50MB for huge context
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -30,6 +42,7 @@ app.post('/v1/chat/completions', async (req, res) => {
                     : `Bearer ${req.headers.authorization}`,
                 'Content-Type': 'application/json'
             },
+            data: cleanedBody,
             timeout: 300000 // 5-minute timeout for Kimi's deep thinking
         });
 
