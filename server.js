@@ -16,28 +16,34 @@ app.use(cors());
 // 2. THE PROXY ROUTE
 app.post('/v1/chat/completions', async (req, res) => {
     try {
-        console.log(`--- GLM 5.1 Request Inbound ---`);
+        let { messages, temperature, top_p, max_tokens, stream } = req.body;
 
-        // Extract Janitor AI fields
-        const { messages, temperature, top_p, max_tokens, stream } = req.body;
+        // --- THE FORMATTING FIX ---
+        // We inject a tiny "formatting nudge" at the very top of the conversation
+        const formattingNudge = {
+            role: "system",
+            content: "IMPORTANT: Always use double-spaced paragraphs. Break dialogue into separate lines. Use clear, standard Markdown formatting."
+        };
+        
+        // Add the nudge to the start of the messages array
+        messages = [formattingNudge, ...messages];
+        // ---------------------------
 
-        // GLM 5.1 works best with specific reasoning toggles
         const cleanedBody = {
-            model: MODEL_ID,
+            model: "z-ai/glm-5.1",
             messages: messages,
-            temperature: temperature || 0.7,
-            top_p: top_p || 0.95, // GLM 5.1 prefers 0.95 over 1.0 for stability
-            max_tokens: max_tokens || 16384, // GLM 5.1 supports large outputs
+            temperature: temperature || 0.8, // GLM 5.1 likes 0.8 for creative writing
+            top_p: 0.95, // 0.95 is the "sweet spot" for GLM 5.1 stability
+            max_tokens: max_tokens || 16384,
             stream: stream || false,
-            // 2026 GLM Features: Enable thinking/reasoning mode
             extra_body: {
                 "chat_template_kwargs": {
-                    "enable_thinking": true,
-                    "clear_thinking": false
+                    "enable_thinking": true, 
+                    "clear_thinking": true // SET TO TRUE: This helps prevent thinking 'leakage' into paragraphs
                 }
             }
         };
-
+        
         const response = await axios({
             method: 'post',
             url: NVIDIA_URL,
