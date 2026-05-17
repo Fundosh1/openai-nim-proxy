@@ -36,7 +36,9 @@ app.post('/v1/chat/completions', async (req, res) => {
                 'Content-Type': 'application/json'
             },
             data: cleanedBody,
-            timeout: 180000 // 3-minute timeout window
+            // CHANGE THIS: Gives the server up to 5 full minutes 
+            // to wait out the queue traffic before throwing an error.
+            timeout: 300000 
         });
 
         res.json(response.data);
