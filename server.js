@@ -19,19 +19,20 @@ app.post('/v1/chat/completions', async (req, res) => {
             return res.status(400).json({ error: "Messages array is required." });
         }
 
-        // --- FIX 1: OVERRIDE JANITOR'S HIDDEN MAX_TOKENS ---
-        // Janitor often passes a small max_tokens value (like 500-1000) behind the scenes.
-        // For GLM-5.1 on NIM, this cuts off sentences mid-thought because reasoning burns tokens.
-        // We force a high cap here so it never cuts off.
-        const forcedMaxTokens = 4096;
-
+        // --- CALIBRATED FORMATTING NUDGE ---
+        const lastMessageIndex = messages.length - 1;
+        if (messages[lastMessageIndex].role === 'user') {
+            messages[lastMessageIndex].content += 
+                "\n\n[Formatting Instruction: Write cleanly. Separate dialogue and paragraphs normally.]";
+        }
+        
         const cleanedBody = {
             model: MODEL_ID,
             messages: messages,
             temperature: 1.0, 
             top_p: 1.0, 
-            max_tokens: forcedMaxTokens,
-            stream: false, // Explicitly false for clean payload processing
+            max_tokens: max_tokens || 4096,
+            stream: stream || false,
             "chat_template_kwargs": {
                 "thinking": true,
                 "enable_thinking": true,
@@ -54,28 +55,31 @@ app.post('/v1/chat/completions', async (req, res) => {
             timeout: 600000 
         });
 
-        // --- FIX 2: INTELLIGENT PARAGRAPH PARSING ---
+        // --- THE LAYOUT STABILIZER ---
         if (response.data && response.data.choices && response.data.choices[0]?.message?.content) {
             let rawContent = response.data.choices[0].message.content;
 
-            // 1. First, normalize any weird spacing the model returned
-            rawContent = rawContent.replace(/\r\n/g, '\n');
+            // Step 1: Standardize all erratic line breaks into single uniform newlines (\n)
+            rawContent = rawContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-            // 2. Separate dialogue safely: ONLY split if a quote ends and a completely new sentence starts.
-            // This prevents cutting off sentences that include commas or action tags.
-            rawContent = rawContent.replace(/(”|")\s+(?=[A-Z])/g, '$1\n\n');
+            // Step 2: Separate smashed dialogue blocks ONLY if they lack spacing entirely
+            // Example: "Hello."She said -> "Hello."\n\nShe said
+            rawContent = rawContent.replace(/(”|")([A-Z])/g, '$1\n\n$2');
 
-            // 3. Fix paragraph clumping safely: Only add breaks after structural terminal punctuation (.!?) 
-            // followed directly by a space and a capital letter, ensuring it's an absolute sentence boundary.
-            rawContent = rawContent.replace(/([.!?])\s+(?=[A-Z\s]["']?[A-Z])/g, '$1\n\n');
-
-            // 4. Clean up any accidental triple-spacing created by the logic
+            // Step 3: Fix double spacing issues by converting any sequence of 3 or more newlines down to a perfect \n\n
             rawContent = rawContent.replace(/\n{3,}/g, '\n\n');
 
+            // Step 4: Ensure single stray lines get given proper paragraph status without blowing out spacing
+            rawContent = rawContent.replace(/(?<!\n)\n(?!\n)/g, '\n\n');
+
+            // Step 5: Final pass sanitation sweep to remove any accidental duplicate whitespace groupings
+            rawContent = rawContent.replace(/\n{3,}/g, '\n\n').trim();
+
+            // Push the sanitized text layout back to JanitorAI
             response.data.choices[0].message.content = rawContent;
         }
 
-        console.log(`Success: GLM 5.1 advanced formatting delivered layout smoothly.`);
+        console.log(`Success: GLM 5.1 formatting stabilized.`);
         res.json(response.data);
 
     } catch (error) {
