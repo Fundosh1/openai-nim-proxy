@@ -19,11 +19,37 @@ app.post('/v1/chat/completions', async (req, res) => {
             return res.status(400).json({ error: "Messages array is required." });
         }
 
-        // --- CALIBRATED FORMATTING NUDGE ---
+        // --- STEP 1: ANALYZE THE EXISTING CHAT STYLE ---
+        let usesDoubleNewlines = true; 
+        let sampleText = "";
+
+        // Look backward through history to find the most recent long bot or user message to sample style from
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].content && messages[i].content.length > 100) {
+                sampleText = messages[i].content;
+                break;
+            }
+        }
+
+        if (sampleText) {
+            // Count double newlines (\n\n) vs single newlines (\n)
+            const doubleCount = (sampleText.match(/\n\n/g) || []).length;
+            const singleCount = (sampleText.match(/(?<!\n)\n(?!\n)/g) || []).length;
+            
+            // If the chat context predominantly uses single line breaks, adapt to that style
+            if (singleCount > doubleCount * 1.5) {
+                usesDoubleNewlines = false;
+            }
+        }
+
+        // --- STEP 2: REINFORCE STYLE IN PROMPT ---
+        const styleInstruction = usesDoubleNewlines 
+            ? "Maintain the current layout style. Use clear double line breaks (\\n\\n) between separate narrative paragraphs and dialogue blocks."
+            : "Maintain the current layout style. Keep text tighter using single line breaks (\\n) for shifts in dialogue or action.";
+
         const lastMessageIndex = messages.length - 1;
         if (messages[lastMessageIndex].role === 'user') {
-            messages[lastMessageIndex].content += 
-                "\n\n[Formatting Instruction: Write cleanly. Separate dialogue and paragraphs normally.]";
+            messages[lastMessageIndex].content += `\n\n[Style Match Mandate: ${styleInstruction}]`;
         }
         
         const cleanedBody = {
@@ -55,31 +81,29 @@ app.post('/v1/chat/completions', async (req, res) => {
             timeout: 600000 
         });
 
-        // --- THE LAYOUT STABILIZER ---
+        // --- STEP 3: ADAPTIVE POST-PROCESSING CLEANUP ---
         if (response.data && response.data.choices && response.data.choices[0]?.message?.content) {
             let rawContent = response.data.choices[0].message.content;
 
-            // Step 1: Standardize all erratic line breaks into single uniform newlines (\n)
+            // Standardize basic formatting first
             rawContent = rawContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-            // Step 2: Separate smashed dialogue blocks ONLY if they lack spacing entirely
-            // Example: "Hello."She said -> "Hello."\n\nShe said
-            rawContent = rawContent.replace(/(”|")([A-Z])/g, '$1\n\n$2');
+            if (usesDoubleNewlines) {
+                // Style A: Fix clumping into clean double spaces, crush accidental triple spaces
+                rawContent = rawContent.replace(/(”|")([A-Z])/g, '$1\n\n$2');
+                rawContent = rawContent.replace(/(?<!\n)\n(?!\n)/g, '\n\n');
+                rawContent = rawContent.replace(/\n{3,}/g, '\n\n');
+            } else {
+                // Style B: The chat history prefers compact single lines. Collapse double-breaks down to singles.
+                rawContent = rawContent.replace(/\n{2,}/g, '\n');
+                // Ensure tight dialogue blocks look clean
+                rawContent = rawContent.replace(/(”|")([A-Z])/g, '$1\n$2');
+            }
 
-            // Step 3: Fix double spacing issues by converting any sequence of 3 or more newlines down to a perfect \n\n
-            rawContent = rawContent.replace(/\n{3,}/g, '\n\n');
-
-            // Step 4: Ensure single stray lines get given proper paragraph status without blowing out spacing
-            rawContent = rawContent.replace(/(?<!\n)\n(?!\n)/g, '\n\n');
-
-            // Step 5: Final pass sanitation sweep to remove any accidental duplicate whitespace groupings
-            rawContent = rawContent.replace(/\n{3,}/g, '\n\n').trim();
-
-            // Push the sanitized text layout back to JanitorAI
-            response.data.choices[0].message.content = rawContent;
+            response.data.choices[0].message.content = rawContent.trim();
         }
 
-        console.log(`Success: GLM 5.1 formatting stabilized.`);
+        console.log(`Success: GLM 5.1 dynamically matched chat style (Double Spacing: ${usesDoubleNewlines}).`);
         res.json(response.data);
 
     } catch (error) {
@@ -91,7 +115,7 @@ app.post('/v1/chat/completions', async (req, res) => {
 });
 
 const server = app.listen(PORT, () => {
-    console.log(`\n🚀 GLM 5.1 Bridge is LIVE on port ${PORT}`);
+    console.log(`\n🚀 GLM 5.1 Style-Matcher Bridge is LIVE`);
 });
 
 server.timeout = 600000; 
