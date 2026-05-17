@@ -3,39 +3,27 @@ const cors = require('cors');
 const axios = require('axios');
 const app = express();
 
-// 1. SETTINGS & LIMITS
+// 1. SETTINGS FOR GEMMA 4 NIM
 const PORT = process.env.PORT || 8080;
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
-const MODEL_ID = "z-ai/glm-5.1"; // Verified 2026 NVIDIA ID
+const MODEL_ID = "google/gemma-4-31b-it"; 
 
-// Increase limits for GLM 5.1's 200k+ context capacity
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ limit: '100mb', extended: true }));
+app.use(express.json({ limit: '50mb' }));
 app.use(cors());
 
-// 2. THE PROXY ROUTE
+// 2. NIM PROXY PIPELINE
 app.post('/v1/chat/completions', async (req, res) => {
     try {
-        console.log(`--- GLM 5.1 Request Inbound ---`);
-
-        // Extract Janitor AI fields
+        console.log(`--- Gemma 4 31B Request Received ---`);
         const { messages, temperature, top_p, max_tokens, stream } = req.body;
 
-        // GLM 5.1 works best with specific reasoning toggles
         const cleanedBody = {
             model: MODEL_ID,
             messages: messages,
-            temperature: temperature || 0.7,
-            top_p: top_p || 0.95, // GLM 5.1 prefers 0.95 over 1.0 for stability
-            max_tokens: max_tokens || 16384, // GLM 5.1 supports large outputs
-            stream: stream || false,
-            // 2026 GLM Features: Enable thinking/reasoning mode
-            extra_body: {
-                "chat_template_kwargs": {
-                    "enable_thinking": true,
-                    "clear_thinking": false
-                }
-            }
+            temperature: temperature || 0.8, // Gemma shines at 0.8 for vivid storytelling
+            top_p: top_p || 0.95,           // Keeps the structural token boundaries clean
+            max_tokens: max_tokens || 8192,  // Generates expansive descriptions if allowed
+            stream: stream || false
         };
 
         const response = await axios({
@@ -48,27 +36,16 @@ app.post('/v1/chat/completions', async (req, res) => {
                 'Content-Type': 'application/json'
             },
             data: cleanedBody,
-            timeout: 600000 // 10-minute timeout (Reasoning models can be slow)
+            timeout: 180000 // 3-minute timeout window
         });
 
-        console.log(`Success: GLM 5.1 responded.`);
         res.json(response.data);
 
     } catch (error) {
-        const status = error.response?.status || 500;
-        const errorData = error.response?.data || error.message;
-        
-        console.error(`Error ${status}:`, JSON.stringify(errorData));
-        res.status(status).json(errorData);
+        console.error(`NIM Proxy Error:`, error.response?.data || error.message);
+        res.status(error.response?.status || 500).json(error.response?.data || { error: "Proxy Pipeline Error" });
     }
 });
 
-// 3. START SERVER
-const server = app.listen(PORT, () => {
-    console.log(`\n🚀 GLM 5.1 Bridge is LIVE on port ${PORT}`);
-});
-
-// Vital for long reasoning tasks
-server.timeout = 600000; 
-server.headersTimeout = 605000;
-server.keepAliveTimeout = 605000;
+// 3. LISTEN
+app.listen(PORT, () => console.log(`🚀 Gemma 4 NIM Bridge Active on Port ${PORT}`));
