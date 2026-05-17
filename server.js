@@ -19,21 +19,19 @@ app.post('/v1/chat/completions', async (req, res) => {
             return res.status(400).json({ error: "Messages array is required." });
         }
 
-        // --- HARD USER LEVEL PROMPT FORCE ---
-        const lastMessageIndex = messages.length - 1;
-        if (messages[lastMessageIndex].role === 'user') {
-            messages[lastMessageIndex].content += 
-                "\n\n[Formatting Mandate: Break down your dialogue into separate lines. Use explicit paragraph breaks.]";
-        }
-        
+        // --- FIX 1: OVERRIDE JANITOR'S HIDDEN MAX_TOKENS ---
+        // Janitor often passes a small max_tokens value (like 500-1000) behind the scenes.
+        // For GLM-5.1 on NIM, this cuts off sentences mid-thought because reasoning burns tokens.
+        // We force a high cap here so it never cuts off.
+        const forcedMaxTokens = 4096;
+
         const cleanedBody = {
             model: MODEL_ID,
             messages: messages,
-            temperature: 1.0, // High entropy required by GLM-5.1 to prevent character clumping
+            temperature: 1.0, 
             top_p: 1.0, 
-            max_tokens: max_tokens || 4096,
-            stream: stream || false,
-            // Community consensus parameters required by NVIDIA NIM to filter text blocks properly
+            max_tokens: forcedMaxTokens,
+            stream: false, // Explicitly false for clean payload processing
             "chat_template_kwargs": {
                 "thinking": true,
                 "enable_thinking": true,
@@ -56,26 +54,28 @@ app.post('/v1/chat/completions', async (req, res) => {
             timeout: 600000 
         });
 
-        // --- THE JANITORAI INJECTION FIX ---
-        // We catch the data block, dig out the raw content string, 
-        // and manually replace smashed dialogue or sentence boundaries with clean layout spacing.
+        // --- FIX 2: INTELLIGENT PARAGRAPH PARSING ---
         if (response.data && response.data.choices && response.data.choices[0]?.message?.content) {
             let rawContent = response.data.choices[0].message.content;
 
-            // Fix 1: Look for quotation mark transitions (dialogue blocks smashed together) and break them open
-            rawContent = rawContent.replace(/(”|")\s*([A-Z])/g, '$1\n\n$2');
-            
-            // Fix 2: Look for compressed sentence patterns where the backend ate the trailing carriage return
-            rawContent = rawContent.replace(/([.!?])\s*(?=\b[A-Z]["']?[a-z])/g, '$1\n\n');
+            // 1. First, normalize any weird spacing the model returned
+            rawContent = rawContent.replace(/\r\n/g, '\n');
 
-            // Fix 3: Ensure double newline parity 
-            rawContent = rawContent.replace(/\n(?!\n)/g, '\n\n');
+            // 2. Separate dialogue safely: ONLY split if a quote ends and a completely new sentence starts.
+            // This prevents cutting off sentences that include commas or action tags.
+            rawContent = rawContent.replace(/(”|")\s+(?=[A-Z])/g, '$1\n\n');
 
-            // Overwrite the processed string back to the body payload
+            // 3. Fix paragraph clumping safely: Only add breaks after structural terminal punctuation (.!?) 
+            // followed directly by a space and a capital letter, ensuring it's an absolute sentence boundary.
+            rawContent = rawContent.replace(/([.!?])\s+(?=[A-Z\s]["']?[A-Z])/g, '$1\n\n');
+
+            // 4. Clean up any accidental triple-spacing created by the logic
+            rawContent = rawContent.replace(/\n{3,}/g, '\n\n');
+
             response.data.choices[0].message.content = rawContent;
         }
 
-        console.log(`Success: GLM 5.1 layout pipeline cleaned and delivered.`);
+        console.log(`Success: GLM 5.1 advanced formatting delivered layout smoothly.`);
         res.json(response.data);
 
     } catch (error) {
