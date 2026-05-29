@@ -3,49 +3,48 @@ const cors = require('cors');
 const axios = require('axios');
 const app = express();
 
-// 1. SETTINGS FOR GEMMA 4 NIM
 const PORT = process.env.PORT || 8080;
-const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
-const MODEL_ID = "google/gemma-4-31b-it"; 
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-app.use(express.json({ limit: '50mb' }));
+// DEFAULT MODEL: Set to GPT-OSS 120B for rock-solid stability and prose depth
+const MODEL_ID = "openai/gpt-oss-120b:free"; 
+
+app.use(express.json({ limit: '100mb' }));
 app.use(cors());
 
-// 2. NIM PROXY PIPELINE
 app.post('/v1/chat/completions', async (req, res) => {
     try {
-        console.log(`--- Gemma 4 31B Request Received ---`);
-        const { messages, temperature, top_p, max_tokens, stream } = req.body;
+        console.log(`📦 Request routed through High-Throughput Bridge`);
+        let { messages, temperature, top_p, max_tokens, stream } = req.body;
 
         const cleanedBody = {
-            model: MODEL_ID,
+            model: MODEL_ID, // Connects to the model defined above
             messages: messages,
-            temperature: temperature || 0.8, // Gemma shines at 0.8 for vivid storytelling
-            top_p: top_p || 0.95,           // Keeps the structural token boundaries clean
-            max_tokens: max_tokens || 8192,  // Generates expansive descriptions if allowed
+            temperature: temperature || 0.85, // Perfect balance for creative RP prose
+            top_p: 0.95,                      // Retains high vocabulary variation
+            max_tokens: max_tokens || 4096,
             stream: stream || false
         };
 
         const response = await axios({
             method: 'post',
-            url: NVIDIA_URL,
+            url: OPENROUTER_URL,
             headers: {
-                'Authorization': req.headers.authorization.startsWith('Bearer') 
-                    ? req.headers.authorization 
-                    : `Bearer ${req.headers.authorization}`,
+                'Authorization': `Bearer ${req.headers.authorization.replace('Bearer ', '')}`,
+                'HTTP-Referer': 'https://janitorai.com',
+                'X-Title': 'Janitor-Stable-Bridge',
                 'Content-Type': 'application/json'
             },
             data: cleanedBody,
-            timeout: 180000 // 3-minute timeout window
+            timeout: 180000 // 3-minute timeout cushion
         });
 
         res.json(response.data);
 
     } catch (error) {
-        console.error(`NIM Proxy Error:`, error.response?.data || error.message);
-        res.status(error.response?.status || 500).json(error.response?.data || { error: "Proxy Pipeline Error" });
+        console.error("❌ Proxy Bridge Failure:", error.response?.data || error.message);
+        res.status(error.response?.status || 500).json(error.response?.data || { error: "Traffic Timeout" });
     }
 });
 
-// 3. LISTEN
-app.listen(PORT, () => console.log(`🚀 Gemma 4 NIM Bridge Active on Port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 High-Throughput Proxy Active on Port ${PORT}`));
