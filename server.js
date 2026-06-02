@@ -6,15 +6,15 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
-// SWAPPED: High-speed, traffic-immune open weight model on NIM
-const MODEL_ID = "deepseek/deepseek-v4-flash"; 
+// THE EXACT MODEL: Explicitly targeting Moonshot Kimi 2.6 on NIM
+const MODEL_ID = "moonshotai/kimi-k2.6"; 
 
 app.use(express.json({ limit: '100mb' }));
 app.use(cors());
 
 app.post('/v1/chat/completions', async (req, res) => {
     try {
-        console.log(`📡 Inbound Janitor -> Routing to High-Velocity DeepSeek V4 Flash...`);
+        console.log(`📡 Request received. Forcing connection to remain open for Kimi 2.6...`);
         let { messages, temperature, top_p, max_tokens } = req.body;
 
         const authHeader = req.headers.authorization;
@@ -25,10 +25,10 @@ app.post('/v1/chat/completions', async (req, res) => {
         const cleanedBody = {
             model: MODEL_ID,
             messages: messages,
-            temperature: temperature || 0.85, // Perfect balance for creative RP prose
-            top_p: top_p || 0.90,             // Extra clamp to secure paragraph layout bounds
+            temperature: temperature || 1.0, 
+            top_p: top_p || 0.95,             
             max_tokens: max_tokens || 4096,
-            stream: false                      // Kept false to bypass gateway handshake lag
+            stream: false // Strictly false to secure gateway passage on NIM
         };
 
         const response = await axios({
@@ -40,15 +40,21 @@ app.post('/v1/chat/completions', async (req, res) => {
                 'accept': 'application/json'
             },
             data: cleanedBody,
-            timeout: 60000 // Cut to 60s since V4 Flash should answer in under 5 seconds
+            // AXIOS TIMEOUT EXTENSION: 10 full minutes to clear heavy queue bottlenecks
+            timeout: 600000 
         });
 
         res.json(response.data);
 
     } catch (error) {
-        console.error("❌ NIM Connection Failed:", error.response?.data || error.message);
-        res.status(error.response?.status || 500).json(error.response?.data || { error: "NIM Route Down" });
+        console.error("❌ NIM Kimi 2.6 Route Failed:", error.response?.data || error.message);
+        res.status(error.response?.status || 500).json(error.response?.data || { error: "Kimi 2.6 Connection Denied" });
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Velocity NIM Bridge Active on Port ${PORT}`));
+// NODE NETWORK SERVER IMPLEMENTATION
+const server = app.listen(PORT, () => console.log(`🚀 Dedicated Kimi 2.6 NIM Bridge Active on Port ${PORT}`));
+
+// HARDWARE SOCKET UNBOUND: Overrides Node's native 2-3 minute connection drops
+server.timeout = 600000;          // 10 minutes max execution hold
+server.keepAliveTimeout = 610000; // Keeps communication wire open past the timeout window
