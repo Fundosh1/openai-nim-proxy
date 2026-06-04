@@ -6,7 +6,7 @@ const app = express();
 // 1. SETTINGS & LIMITS
 const PORT = process.env.PORT || 8080;
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
-const MODEL_ID = "z-ai/glm-5.1"; // Verified 2026 NVIDIA ID
+const MODEL_ID = "moonshotai/kimi-k2.6"; // Verified 2026 NVIDIA ID
 
 // Increase limits for GLM 5.1's 200k+ context capacity
 app.use(express.json({ limit: '100mb' }));
