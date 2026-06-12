@@ -29,6 +29,11 @@ app.post('/v1/chat/completions', async (req, res) => {
             top_p: top_p || 0.95, // GLM 5.1 prefers 0.95 over 1.0 for stability
             max_tokens: max_tokens || 16384, // GLM 5.1 supports large outputs
             stream: stream || false,
+            // 2026 GLM Features: Enable thinking/reasoning mode
+            extra_body: {
+                "chat_template_kwargs": {
+                    "enable_thinking": true,
+                    "clear_thinking": false
                 }
             }
         };
