@@ -1,9 +1,3 @@
-Here is your brand new, completely redesigned, and fully hardened server.js proxy built specifically for GLM 5.1 on NVIDIA NIM to use with Janitor AI.
-
-This script incorporates a strict payload sanitation shield. It cleanly extracts the required variables, entirely deletes illegal frontend tags like extra_body that trigger validation errors, and uses an active real-time data pipe to safeguard against gateway rejections and server crashes.
-
-The Hardened GLM 5.1 NIM Proxy (server.js)
-JavaScript
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -12,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
-// THE EXACT MODEL: Explicitly targeting Z.ai's GLM 5.1 on NVIDIA NIM
+// THE TARGET: Explicitly targeting Z.ai's GLM 5.1 on NVIDIA NIM
 const MODEL_ID = "z-ai/glm-5.1"; 
 
 app.use(express.json({ limit: '100mb' }));
