@@ -7,14 +7,14 @@ const PORT = process.env.PORT || 8080;
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
 // THE TARGET: Explicitly targeting Z.ai's GLM 5.1 on NVIDIA NIM
-const MODEL_ID = "moonshotai/kimi-k2.6"; 
+const MODEL_ID = "z-ai/glm-5.2"; 
 
 app.use(express.json({ limit: '100mb' }));
 app.use(cors());
 
 app.post('/v1/chat/completions', async (req, res) => {
     try {
-        console.log(`📡 Inbound request received. Sanitizing payload for Kimi 2.6...`);
+        console.log(`📡 Inbound request received. Sanitizing payload for GLM 5.2...`);
         let { messages, temperature, top_p, max_tokens, stream } = req.body;
 
         const authHeader = req.headers.authorization;
@@ -57,7 +57,7 @@ app.post('/v1/chat/completions', async (req, res) => {
             // Pipe data blocks dynamically without causing server memory pool panics
             response.data.pipe(res);
             
-            response.data.on('end', () => console.log(`✅ Kimi 2.6 stream delivery finished.`));
+            response.data.on('end', () => console.log(`✅ GLM 5.2 stream delivery finished.`));
         } else {
             // Standard JSON fallback 
             res.json(response.data);
@@ -76,12 +76,12 @@ app.post('/v1/chat/completions', async (req, res) => {
         }
 
         if (!res.headersSent) {
-            res.status(500).json({ error: "Kimi 2.6 backend exception handled safely." });
+            res.status(500).json({ error: "GLM 5.2 backend exception handled safely." });
         }
     }
 });
 
 // START EXPRESS SOCKET AND UNBOUND CONNECTION IDLE DROP TIMERS
-const server = app.listen(PORT, () => console.log(`🚀 Hardened Kimi 2.6 NIM Bridge Online on Port ${PORT}`));
+const server = app.listen(PORT, () => console.log(`🚀 Hardened GLM 5.2 NIM Bridge Online on Port ${PORT}`));
 server.timeout = 600000;
 server.keepAliveTimeout = 610000;
