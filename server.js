@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 8080;
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
 // THE TARGET: Explicitly targeting Z.ai's GLM 5.1 on NVIDIA NIM
-const MODEL_ID = "minimaxai/minimax-m3"; 
+const MODEL_ID = "z-ai/glm-5.2"; 
 
 app.use(express.json({ limit: '100mb' }));
 app.use(cors());
